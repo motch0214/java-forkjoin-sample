@@ -19,9 +19,13 @@ public class ForkJoinTest {
         ForkJoinTask<BigInteger> a = pool.submit(() -> new SyncTask("A").get());
         ForkJoinTask<BigInteger> b = pool.submit(() -> new SyncTask("B").get());
         ForkJoinTask<BigInteger> c = pool.submit(() -> new AsyncTask("C").get());
+        ForkJoinTask<BigInteger> d = pool.submit(() -> new AsyncTask("D").get());
+        ForkJoinTask<BigInteger> e = pool.submit(() -> new AsyncTask("E").get());
 
         log.info("A's result: {}", a.join());
         log.info("B's result: {}", b.join());
         log.info("C's result: {}", c.join());
+        log.info("D's result: {}", d.join());
+        log.info("E's result: {}", e.join());
     }
 }

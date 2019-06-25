@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
@@ -24,18 +25,40 @@ public class SyncTask extends HeavyTask implements Supplier<BigInteger> {
     @Override
     public BigInteger get() {
         log.info("{} starts.", name);
-        LOCK.lock();
-        log.info("{} restarts.", name);
+        Blocker blocker = new Blocker();
         try {
-            IntStream.range(0, 10).forEach(i -> {
-                log.debug("{} is running: {}", name, i);
-                doHeavy();
-            });
+            ForkJoinPool.managedBlock(blocker);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return blocker.result;
+    }
 
-            log.info("{} finished.", name);
-            return getResult();
-        } finally {
-            LOCK.unlock();
+    private class Blocker implements ForkJoinPool.ManagedBlocker {
+
+        BigInteger result = null;
+
+        @Override
+        public boolean block() {
+            LOCK.lock();
+            log.info("{} restarts.", name);
+            try {
+                IntStream.range(0, 10).forEach(i -> {
+                    log.debug("{} is running: {}", name, i);
+                    doHeavy();
+                });
+
+                log.info("{} finished.", name);
+                result = getResult();
+                return true;
+            } finally {
+                LOCK.unlock();
+            }
+        }
+
+        @Override
+        public boolean isReleasable() {
+            return result != null;
         }
     }
 }
